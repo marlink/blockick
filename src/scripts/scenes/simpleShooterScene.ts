@@ -202,9 +202,9 @@ export default class SimpleShooterScene extends Phaser.Scene {
     const topX = 0;
     const topY = -30; 
     
-    // Rotate the vertex coordinates
-    const rotatedTopX = Math.sin(radians) * -topY; // Simplified rotation for (0, -30)
-    const rotatedTopY = Math.cos(radians) * topY;  // Simplified rotation for (0, -30)
+    // Rotate the vertex coordinates using standard 2D rotation formula
+    const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians); // Full rotation for (0, -30)
+    const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians); // Full rotation for (0, -30)
     const indicatorX = baseX + rotatedTopX;
     const indicatorY = baseY + rotatedTopY;
     
@@ -220,24 +220,24 @@ export default class SimpleShooterScene extends Phaser.Scene {
       // Marker 1 (top vertex) - yellow - original position (0, -30)
       const topX = 0;
       const topY = -30;
-      const rotatedTopX = Math.sin(radians) * -topY; // Simplified rotation for (0, -30)
-      const rotatedTopY = Math.cos(radians) * topY;  // Simplified rotation for (0, -30)
+      const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians); // Full rotation for (0, -30)
+      const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians); // Full rotation for (0, -30)
       // Position exactly at the vertex
       this.vertexMarkers[0].setPosition(baseX + rotatedTopX, baseY + rotatedTopY);
       
       // Marker 2 (bottom left vertex) - green - original position (-10, 0)
       const leftX = -10;
       const leftY = 0;
-      const rotatedLeftX = leftX * Math.cos(radians); // Simplified rotation for (-10, 0)
-      const rotatedLeftY = leftX * Math.sin(radians); // Simplified rotation for (-10, 0)
+      const rotatedLeftX = leftX * Math.cos(radians) - leftY * Math.sin(radians); // Correct rotation for (-10, 0)
+      const rotatedLeftY = leftX * Math.sin(radians) + leftY * Math.cos(radians); // Correct rotation for (-10, 0)
       // Position exactly at the vertex
       this.vertexMarkers[1].setPosition(baseX + rotatedLeftX, baseY + rotatedLeftY);
       
       // Marker 3 (bottom right vertex) - purple - original position (10, 0)
       const rightX = 10;
       const rightY = 0;
-      const rotatedRightX = rightX * Math.cos(radians); // Simplified rotation for (10, 0)
-      const rotatedRightY = rightX * Math.sin(radians); // Simplified rotation for (10, 0)
+      const rotatedRightX = rightX * Math.cos(radians) - rightY * Math.sin(radians); // Correct rotation for (10, 0)
+      const rotatedRightY = rightX * Math.sin(radians) + rightY * Math.cos(radians); // Correct rotation for (10, 0)
       // Position exactly at the vertex
       this.vertexMarkers[2].setPosition(baseX + rotatedRightX, baseY + rotatedRightY);
     } else {

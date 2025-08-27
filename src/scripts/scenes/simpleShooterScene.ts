@@ -74,22 +74,24 @@ export default class SimpleShooterScene extends Phaser.Scene {
     // Triangle vertices: (0, -30) is top, (-10, 0) is bottom-left, (10, 0) is bottom-right
     this.aimingArrow = this.add.triangle(0, 0, 0, -30, -10, 0, 10, 0, 0xFF0000);
     this.aimingArrow.setVisible(false);
+    // Set origin to center for proper rotation
+    this.aimingArrow.setOrigin(0.5, 0.5);
     
     // Create direction indicator at arrow tip (initially invisible)
-    this.directionIndicator = this.add.circle(0, 0, 5, 0x00FFFF, 0.8);
+    this.directionIndicator = this.add.circle(0, 0, 2, 0xFF0000, 1);
     this.directionIndicator.setVisible(false);
 
     // Create vertex markers (initially invisible)
     // Marker 1 (top vertex) - yellow
-    const marker1 = this.add.circle(0, 0, 3, 0xFFFF00, 1);
+    const marker1 = this.add.circle(0, 0, 2, 0xFFFF00, 1);
     marker1.setVisible(false);
     
     // Marker 2 (bottom left vertex) - green
-    const marker2 = this.add.circle(0, 0, 3, 0x00FF00, 1);
+    const marker2 = this.add.circle(0, 0, 2, 0x00FF00, 1);
     marker2.setVisible(false);
     
     // Marker 3 (bottom right vertex) - purple
-    const marker3 = this.add.circle(0, 0, 3, 0xAA00FF, 1);
+    const marker3 = this.add.circle(0, 0, 2, 0xAA00FF, 1);
     marker3.setVisible(false);
     
     this.vertexMarkers = [marker1, marker2, marker3];
@@ -214,6 +216,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
       const topY = -30;
       const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians);
       const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians);
+      // Position exactly at the vertex
       this.vertexMarkers[0].setPosition(baseX + rotatedTopX, baseY + rotatedTopY);
       
       // Marker 2 (bottom left vertex) - green - original position (-10, 0)
@@ -221,6 +224,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
       const leftY = 0;
       const rotatedLeftX = leftX * Math.cos(radians) - leftY * Math.sin(radians);
       const rotatedLeftY = leftX * Math.sin(radians) + leftY * Math.cos(radians);
+      // Position exactly at the vertex
       this.vertexMarkers[1].setPosition(baseX + rotatedLeftX, baseY + rotatedLeftY);
       
       // Marker 3 (bottom right vertex) - purple - original position (10, 0)
@@ -228,6 +232,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
       const rightY = 0;
       const rotatedRightX = rightX * Math.cos(radians) - rightY * Math.sin(radians);
       const rotatedRightY = rightX * Math.sin(radians) + rightY * Math.cos(radians);
+      // Position exactly at the vertex
       this.vertexMarkers[2].setPosition(baseX + rotatedRightX, baseY + rotatedRightY);
     } else {
       // Hide markers when arrow is not visible

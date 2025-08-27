@@ -22,6 +22,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
   private aimingArrow!: Phaser.GameObjects.Triangle;
   private directionIndicator!: Phaser.GameObjects.Arc; // Small circle at arrow tip
   private vertexMarkers!: Phaser.GameObjects.Arc[]; // Array of markers for triangle vertices
+  private vertexPingTweens!: Phaser.Tweens.Tween[]; // Tweens for pulsing vertex markers
   private currentRotation: number = 0;
   private rotationDirection: number = 1; // 1 for clockwise, -1 for counter-clockwise
   private rotationSpeed: number = 100; // degrees per second
@@ -84,20 +85,34 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.directionIndicator = this.add.circle(0, 0, 2, 0xFF0000, 1);
     this.directionIndicator.setVisible(false);
 
-    // Create vertex markers (initially invisible)
+    // Create vertex markers (initially invisible) - enhanced as ping dots
     // Marker 1 (top vertex) - yellow
-    const marker1 = this.add.circle(0, 0, 2, 0xFFFF00, 1);
+    const marker1 = this.add.circle(0, 0, 3, 0xFFFF00, 1);
     marker1.setVisible(false);
     
     // Marker 2 (bottom left vertex) - green
-    const marker2 = this.add.circle(0, 0, 2, 0x00FF00, 1);
+    const marker2 = this.add.circle(0, 0, 3, 0x00FF00, 1);
     marker2.setVisible(false);
     
     // Marker 3 (bottom right vertex) - purple
-    const marker3 = this.add.circle(0, 0, 2, 0xAA00FF, 1);
+    const marker3 = this.add.circle(0, 0, 3, 0xAA00FF, 1);
     marker3.setVisible(false);
     
     this.vertexMarkers = [marker1, marker2, marker3];
+    
+    // Create pulsing animation tweens for vertex markers
+    this.vertexPingTweens = this.vertexMarkers.map(marker => {
+      return this.tweens.add({
+        targets: marker,
+        scale: { from: 0.5, to: 1.5 },
+        alpha: { from: 0.7, to: 1 },
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        paused: true
+      });
+    });
   }
   
   update(time: number, delta: number) {
@@ -210,8 +225,13 @@ export default class SimpleShooterScene extends Phaser.Scene {
     
     // Update vertex marker positions
     if (this.aimingArrow.visible) {
-      // Make markers visible
-      this.vertexMarkers.forEach(marker => marker.setVisible(true));
+      // Make markers visible and start pulsing animations
+      this.vertexMarkers.forEach((marker, index) => {
+        marker.setVisible(true);
+        if (this.vertexPingTweens[index].isPaused()) {
+          this.vertexPingTweens[index].resume();
+        }
+      });
       
       // Calculate vertex positions based on triangle's actual vertices and current rotation
       // Original triangle vertices relative to center: (0, -30), (-10, 0), (10, 0)
@@ -241,8 +261,11 @@ export default class SimpleShooterScene extends Phaser.Scene {
       // Position exactly at the vertex
       this.vertexMarkers[2].setPosition(baseX + rotatedRightX, baseY + rotatedRightY);
     } else {
-      // Hide markers when arrow is not visible
-      this.vertexMarkers.forEach(marker => marker.setVisible(false));
+      // Hide markers and pause pulsing animations when arrow is not visible
+      this.vertexMarkers.forEach((marker, index) => {
+        marker.setVisible(false);
+        this.vertexPingTweens[index].pause();
+      });
     }
     
     // Update indicator position
@@ -282,6 +305,12 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.aimingArrow.setVisible(true);
     this.directionIndicator.setVisible(true);
     
+    // Make vertex markers visible and start pulsing animations
+    this.vertexMarkers.forEach((marker, index) => {
+      marker.setVisible(true);
+      this.vertexPingTweens[index].resume();
+    });
+    
     // Position at player
     this.updateAimingComponentPositions();
   }
@@ -295,6 +324,14 @@ export default class SimpleShooterScene extends Phaser.Scene {
     
     // Visual feedback for locked state
     this.aimingCircle.setFillStyle(0xFFAA00, 0.7); // Change color to orange
+    
+    // Ensure vertex markers are visible and pulsing animations are running
+    this.vertexMarkers.forEach((marker, index) => {
+      marker.setVisible(true);
+      if (this.vertexPingTweens[index].isPaused()) {
+        this.vertexPingTweens[index].resume();
+      }
+    });
     
     // Schedule firing after 500ms (0.5 seconds)
     this.firingTimer = this.time.delayedCall(500, this.fireLockedProjectile, [], this);
@@ -319,6 +356,12 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.aimingCircle.setVisible(false);
     this.aimingArrow.setVisible(false);
     this.directionIndicator.setVisible(false);
+    
+    // Hide vertex markers and pause pulsing animations
+    this.vertexMarkers.forEach((marker, index) => {
+      marker.setVisible(false);
+      this.vertexPingTweens[index].pause();
+    });
     
     // Reset circle color
     this.aimingCircle.setFillStyle(0xFFFFFF, 0.5);

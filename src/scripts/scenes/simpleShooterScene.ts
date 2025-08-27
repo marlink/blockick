@@ -42,8 +42,8 @@ export default class SimpleShooterScene extends Phaser.Scene {
   }
   
   create() {
-    // Set background color
-    this.cameras.main.setBackgroundColor('#00FF00');
+    // Create gradient background with multiple shades of green
+    this.createGradientBackground();
     
     // Create projectile group with physics
     this.projectiles = this.physics.add.group({
@@ -386,5 +386,80 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.circleOutline.setVisible(false);
     this.orbitingDot.setVisible(false);
     this.strengthIndicator.setVisible(false);
+  }
+  
+  private createGradientBackground() {
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    
+    // Create a gradient background with multiple shades of green
+    const gradientTexture = this.textures.createCanvas('gradientTexture', width, height);
+    const context = gradientTexture.getContext();
+    
+    // Create a vertical gradient from darker green at the top to lighter green at the bottom
+    const gradient = context.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, '#005500');   // Dark green at the top
+    gradient.addColorStop(0.3, '#007700'); // Medium dark green
+    gradient.addColorStop(0.7, '#00AA00'); // Medium light green
+    gradient.addColorStop(1, '#00CC00');   // Light green at the bottom
+    
+    // Fill the background with the gradient
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, width, height);
+    
+    // Add grass blade details
+    this.addGrassDetails(context, width, height);
+    
+    // Update the canvas texture
+    gradientTexture.refresh();
+    
+    // Create a sprite using the gradient texture that fills the screen
+    this.add.image(width/2, height/2, 'gradientTexture');
+  }
+  
+  private addGrassDetails(context: CanvasRenderingContext2D, width: number, height: number) {
+    // Add small grass blade details to simulate natural irregularity
+    context.strokeStyle = '#00DD00'; // Slightly lighter green for the grass blades
+    context.lineWidth = 1;
+    
+    // Create random grass blades across the field
+    for (let i = 0; i < 300; i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      const length = 3 + Math.random() * 7; // Random length between 3 and 10 pixels
+      const angle = -Math.PI/2 + (Math.random() - 0.5) * Math.PI/4; // Mostly upward with some variation
+      
+      context.beginPath();
+      context.moveTo(x, y);
+      context.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+      context.stroke();
+    }
+    
+    // Add some darker patches for variation
+    context.fillStyle = 'rgba(0, 85, 0, 0.1)';
+    for (let i = 0; i < 20; i++) {
+      const patchSize = 30 + Math.random() * 70;
+      const x = Math.random() * width;
+      const y = Math.random() * height;
+      
+      context.beginPath();
+      context.arc(x, y, patchSize, 0, Math.PI * 2);
+      context.fill();
+    }
+    
+    // Add some field lines (optional)
+    context.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    context.lineWidth = 2;
+    
+    // Center line
+    context.beginPath();
+    context.moveTo(0, height/2);
+    context.lineTo(width, height/2);
+    context.stroke();
+    
+    // Center circle
+    context.beginPath();
+    context.arc(width/2, height/2, 50, 0, Math.PI * 2);
+    context.stroke();
   }
 }

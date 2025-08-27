@@ -249,7 +249,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
       const leftX = -10;
       const leftY = 0;
       const rotatedLeftX = leftX * Math.cos(radians) - leftY * Math.sin(radians); // Correct rotation for (-10, 0)
-      const rotatedLeftY = leftX * Math.sin(radians) + leftY * Math.cos(radians); // Correct rotation for (-10, 0)
+      const rotatedLeftY = leftY * Math.sin(radians) + leftX * Math.cos(radians); // Fixed: using leftY in sin component
       // Position exactly at the vertex
       this.vertexMarkers[1].setPosition(baseX + rotatedLeftX, baseY + rotatedLeftY);
       
@@ -257,7 +257,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
       const rightX = 10;
       const rightY = 0;
       const rotatedRightX = rightX * Math.cos(radians) - rightY * Math.sin(radians); // Correct rotation for (10, 0)
-      const rotatedRightY = rightX * Math.sin(radians) + rightY * Math.cos(radians); // Correct rotation for (10, 0)
+      const rotatedRightY = rightY * Math.sin(radians) + rightX * Math.cos(radians); // Fixed: using rightY in sin component
       // Position exactly at the vertex
       this.vertexMarkers[2].setPosition(baseX + rotatedRightX, baseY + rotatedRightY);
     } else {

@@ -130,7 +130,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
   
   private updateProjectiles(delta: number) {
     const projectiles = this.projectiles.getChildren();
-    const dragFactor = 0.98; // Velocity decay factor (0.98 = 2% slowdown per frame)
+    const dragFactor = 0.995; // Velocity decay factor (0.995 = 0.5% slowdown per frame, adjusted for higher velocities)
     
     for (let i = 0; i < projectiles.length; i++) {
       const projectile = projectiles[i] as Phaser.GameObjects.Arc;
@@ -142,7 +142,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
       
       // Check if projectile has nearly stopped
       const speed = Math.sqrt(body.velocity.x * body.velocity.x + body.velocity.y * body.velocity.y);
-      if (speed < 10) {
+      if (speed < 50) { // Increased from 10 to 50 to match the 10x velocity increase
         // Projectile has stopped, start fade out
         if (!projectile.data || !projectile.data.get('fading')) {
           this.startProjectileFadeOut(projectile);
@@ -321,7 +321,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
     // Set velocity based on direction and strength
     const body = projectile.body as Phaser.Physics.Arcade.Body;
     const minSpeed = 100;
-    const maxSpeed = 500;
+    const maxSpeed = 5000; // Increased by 10x from 500 to allow reaching the top of the screen
     const speed = minSpeed + strength * (maxSpeed - minSpeed);
     body.setVelocity(normalizedDirX * speed, normalizedDirY * speed);
     
@@ -344,7 +344,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
     
     // Reduce velocity on each bounce
     const body = (projectile as Phaser.Types.Physics.Arcade.GameObjectWithBody).body;
-    const velocityReductionFactor = 0.8; // 20% velocity reduction per bounce
+    const velocityReductionFactor = 0.85; // 15% velocity reduction per bounce (adjusted for higher velocities)
     body.velocity.x *= velocityReductionFactor;
     body.velocity.y *= velocityReductionFactor;
     

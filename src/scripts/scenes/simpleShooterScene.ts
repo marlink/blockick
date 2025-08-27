@@ -74,8 +74,8 @@ export default class SimpleShooterScene extends Phaser.Scene {
     // Triangle vertices: (0, -30) is top, (-10, 0) is bottom-left, (10, 0) is bottom-right
     this.aimingArrow = this.add.triangle(0, 0, 0, -30, -10, 0, 10, 0, 0xFF0000);
     this.aimingArrow.setVisible(false);
-    // Set origin to center for proper rotation
-    this.aimingArrow.setOrigin(0.5, 0.5);
+    // Note: We're not setting origin to (0.5, 0.5) as it would shift the triangle's position
+    // relative to its vertices, causing misalignment with the vertex markers
     
     // Create direction indicator at arrow tip (initially invisible)
     this.directionIndicator = this.add.circle(0, 0, 2, 0xFF0000, 1);

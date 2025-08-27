@@ -71,6 +71,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.aimingCircle.setVisible(false);
     
     // Create aiming arrow (initially invisible)
+    // Triangle vertices: (0, -30) is top, (-10, 0) is bottom-left, (10, 0) is bottom-right
     this.aimingArrow = this.add.triangle(0, 0, 0, -30, -10, 0, 10, 0, 0xFF0000);
     this.aimingArrow.setVisible(false);
     
@@ -191,32 +192,43 @@ export default class SimpleShooterScene extends Phaser.Scene {
     // Calculate indicator position based on current rotation
     const radians = Phaser.Math.DegToRad(this.currentRotation);
     // Position the indicator exactly at the top vertex of the triangle
-    const indicatorDistance = 30; // Distance from center to tip of arrow
-    const indicatorX = baseX + Math.sin(radians) * indicatorDistance;
-    const indicatorY = baseY + Math.cos(radians) * indicatorDistance;
+    // Original top vertex is at (0, -30)
+    const topX = 0;
+    const topY = -30;
+    const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians);
+    const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians);
+    const indicatorX = baseX + rotatedTopX;
+    const indicatorY = baseY + rotatedTopY;
     
     // Update vertex marker positions
     if (this.aimingArrow.visible) {
       // Make markers visible
       this.vertexMarkers.forEach(marker => marker.setVisible(true));
       
-      // Calculate vertex positions based on triangle's current position and rotation
-      // Marker 1 (top vertex) - yellow
-      const point1X = baseX + Math.sin(radians) * 30;
-      const point1Y = baseY + Math.cos(radians) * 30;
-      this.vertexMarkers[0].setPosition(point1X, point1Y);
+      // Calculate vertex positions based on triangle's actual vertices and current rotation
+      // Original triangle vertices: (0, -30), (-10, 0), (10, 0)
+      // We need to rotate these points and position them relative to the base position
       
-      // Marker 2 (bottom left vertex) - green
-      const leftRadians = radians + Math.PI * 2/3; // 120 degrees offset
-      const point2X = baseX + Math.sin(leftRadians) * 10;
-      const point2Y = baseY + Math.cos(leftRadians) * 10;
-      this.vertexMarkers[1].setPosition(point2X, point2Y);
+      // Marker 1 (top vertex) - yellow - original position (0, -30)
+      const topX = 0;
+      const topY = -30;
+      const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians);
+      const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians);
+      this.vertexMarkers[0].setPosition(baseX + rotatedTopX, baseY + rotatedTopY);
       
-      // Marker 3 (bottom right vertex) - purple
-      const rightRadians = radians - Math.PI * 2/3; // -120 degrees offset
-      const point3X = baseX + Math.sin(rightRadians) * 10;
-      const point3Y = baseY + Math.cos(rightRadians) * 10;
-      this.vertexMarkers[2].setPosition(point3X, point3Y);
+      // Marker 2 (bottom left vertex) - green - original position (-10, 0)
+      const leftX = -10;
+      const leftY = 0;
+      const rotatedLeftX = leftX * Math.cos(radians) - leftY * Math.sin(radians);
+      const rotatedLeftY = leftX * Math.sin(radians) + leftY * Math.cos(radians);
+      this.vertexMarkers[1].setPosition(baseX + rotatedLeftX, baseY + rotatedLeftY);
+      
+      // Marker 3 (bottom right vertex) - purple - original position (10, 0)
+      const rightX = 10;
+      const rightY = 0;
+      const rotatedRightX = rightX * Math.cos(radians) - rightY * Math.sin(radians);
+      const rotatedRightY = rightX * Math.sin(radians) + rightY * Math.cos(radians);
+      this.vertexMarkers[2].setPosition(baseX + rotatedRightX, baseY + rotatedRightY);
     } else {
       // Hide markers when arrow is not visible
       this.vertexMarkers.forEach(marker => marker.setVisible(false));

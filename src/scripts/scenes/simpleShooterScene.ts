@@ -71,11 +71,14 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.aimingCircle.setVisible(false);
     
     // Create aiming arrow (initially invisible)
-    // Triangle vertices: (0, -30) is top, (-10, 0) is bottom-left, (10, 0) is bottom-right
+    // Important: In Phaser, triangles are drawn with origin at center by default
+    // We need to account for this in our vertex calculations
+    // Triangle vertices relative to center: (0, -30) is top, (-10, 0) is bottom-left, (10, 0) is bottom-right
     this.aimingArrow = this.add.triangle(0, 0, 0, -30, -10, 0, 10, 0, 0xFF0000);
     this.aimingArrow.setVisible(false);
-    // Note: We're not setting origin to (0.5, 0.5) as it would shift the triangle's position
-    // relative to its vertices, causing misalignment with the vertex markers
+    this.aimingArrow.setOrigin(0.5, 0.5); // Explicitly set origin to center
+    // Note: Triangle's origin is at center (0.5, 0.5) by default in Phaser
+    // We need to account for this in our vertex marker calculations
     
     // Create direction indicator at arrow tip (initially invisible)
     this.directionIndicator = this.add.circle(0, 0, 2, 0xFF0000, 1);
@@ -193,12 +196,15 @@ export default class SimpleShooterScene extends Phaser.Scene {
     
     // Calculate indicator position based on current rotation
     const radians = Phaser.Math.DegToRad(this.currentRotation);
+    
     // Position the indicator exactly at the top vertex of the triangle
     // Original top vertex is at (0, -30)
     const topX = 0;
-    const topY = -30;
-    const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians);
-    const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians);
+    const topY = -30; 
+    
+    // Rotate the vertex coordinates
+    const rotatedTopX = Math.sin(radians) * -topY; // Simplified rotation for (0, -30)
+    const rotatedTopY = Math.cos(radians) * topY;  // Simplified rotation for (0, -30)
     const indicatorX = baseX + rotatedTopX;
     const indicatorY = baseY + rotatedTopY;
     
@@ -208,30 +214,30 @@ export default class SimpleShooterScene extends Phaser.Scene {
       this.vertexMarkers.forEach(marker => marker.setVisible(true));
       
       // Calculate vertex positions based on triangle's actual vertices and current rotation
-      // Original triangle vertices: (0, -30), (-10, 0), (10, 0)
+      // Original triangle vertices relative to center: (0, -30), (-10, 0), (10, 0)
       // We need to rotate these points and position them relative to the base position
       
       // Marker 1 (top vertex) - yellow - original position (0, -30)
       const topX = 0;
       const topY = -30;
-      const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians);
-      const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians);
+      const rotatedTopX = Math.sin(radians) * -topY; // Simplified rotation for (0, -30)
+      const rotatedTopY = Math.cos(radians) * topY;  // Simplified rotation for (0, -30)
       // Position exactly at the vertex
       this.vertexMarkers[0].setPosition(baseX + rotatedTopX, baseY + rotatedTopY);
       
       // Marker 2 (bottom left vertex) - green - original position (-10, 0)
       const leftX = -10;
       const leftY = 0;
-      const rotatedLeftX = leftX * Math.cos(radians) - leftY * Math.sin(radians);
-      const rotatedLeftY = leftX * Math.sin(radians) + leftY * Math.cos(radians);
+      const rotatedLeftX = leftX * Math.cos(radians); // Simplified rotation for (-10, 0)
+      const rotatedLeftY = leftX * Math.sin(radians); // Simplified rotation for (-10, 0)
       // Position exactly at the vertex
       this.vertexMarkers[1].setPosition(baseX + rotatedLeftX, baseY + rotatedLeftY);
       
       // Marker 3 (bottom right vertex) - purple - original position (10, 0)
       const rightX = 10;
       const rightY = 0;
-      const rotatedRightX = rightX * Math.cos(radians) - rightY * Math.sin(radians);
-      const rotatedRightY = rightX * Math.sin(radians) + rightY * Math.cos(radians);
+      const rotatedRightX = rightX * Math.cos(radians); // Simplified rotation for (10, 0)
+      const rotatedRightY = rightX * Math.sin(radians); // Simplified rotation for (10, 0)
       // Position exactly at the vertex
       this.vertexMarkers[2].setPosition(baseX + rotatedRightX, baseY + rotatedRightY);
     } else {

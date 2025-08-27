@@ -65,8 +65,6 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-SPACE', this.handleSpacebarPress, this);
   }
   
-  private vertexMarkers: Phaser.GameObjects.Arc[] = [];
-
   private createAimingComponents() {
     // Create aiming circle (initially invisible)
     this.aimingCircle = this.add.circle(0, 0, 40, 0xFFFFFF, 0.5);

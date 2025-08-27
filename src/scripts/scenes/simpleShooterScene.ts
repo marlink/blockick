@@ -21,6 +21,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
   private aimingCircle!: Phaser.GameObjects.Arc;
   private aimingArrow!: Phaser.GameObjects.Triangle;
   private directionIndicator!: Phaser.GameObjects.Arc; // Small circle at arrow tip
+  private vertexMarkers!: Phaser.GameObjects.Arc[]; // Array of markers for triangle vertices
   private currentRotation: number = 0;
   private rotationDirection: number = 1; // 1 for clockwise, -1 for counter-clockwise
   private rotationSpeed: number = 100; // degrees per second
@@ -64,7 +65,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-SPACE', this.handleSpacebarPress, this);
   }
   
-  private vertexLabels: Phaser.GameObjects.Text[] = [];
+  private vertexMarkers: Phaser.GameObjects.Arc[] = [];
 
   private createAimingComponents() {
     // Create aiming circle (initially invisible)
@@ -79,24 +80,20 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.directionIndicator = this.add.circle(0, 0, 5, 0x00FFFF, 0.8);
     this.directionIndicator.setVisible(false);
 
-    // Create vertex labels (initially invisible)
-    const labelStyle = { fontSize: '8px', color: '#FFFFFF' };
-    // Point 1 (top vertex)
-    const label1 = this.add.text(0, 0, 'Point 1', labelStyle);
-    label1.setOrigin(0.5, 1);
-    label1.setVisible(false);
+    // Create vertex markers (initially invisible)
+    // Marker 1 (top vertex) - yellow
+    const marker1 = this.add.circle(0, 0, 3, 0xFFFF00, 1);
+    marker1.setVisible(false);
     
-    // Point 2 (bottom left vertex)
-    const label2 = this.add.text(0, 0, 'Point 2', labelStyle);
-    label2.setOrigin(1, 0);
-    label2.setVisible(false);
+    // Marker 2 (bottom left vertex) - green
+    const marker2 = this.add.circle(0, 0, 3, 0x00FF00, 1);
+    marker2.setVisible(false);
     
-    // Point 3 (bottom right vertex)
-    const label3 = this.add.text(0, 0, 'Point 3', labelStyle);
-    label3.setOrigin(0, 0);
-    label3.setVisible(false);
+    // Marker 3 (bottom right vertex) - purple
+    const marker3 = this.add.circle(0, 0, 3, 0xAA00FF, 1);
+    marker3.setVisible(false);
     
-    this.vertexLabels = [label1, label2, label3];
+    this.vertexMarkers = [marker1, marker2, marker3];
   }
   
   update(time: number, delta: number) {
@@ -200,31 +197,31 @@ export default class SimpleShooterScene extends Phaser.Scene {
     const indicatorX = baseX + Math.sin(radians) * indicatorDistance;
     const indicatorY = baseY + Math.cos(radians) * indicatorDistance;
     
-    // Update vertex label positions
+    // Update vertex marker positions
     if (this.aimingArrow.visible) {
-      // Make labels visible
-      this.vertexLabels.forEach(label => label.setVisible(true));
+      // Make markers visible
+      this.vertexMarkers.forEach(marker => marker.setVisible(true));
       
       // Calculate vertex positions based on triangle's current position and rotation
-      // Point 1 (top vertex)
+      // Marker 1 (top vertex) - yellow
       const point1X = baseX + Math.sin(radians) * 30;
       const point1Y = baseY + Math.cos(radians) * 30;
-      this.vertexLabels[0].setPosition(point1X, point1Y);
+      this.vertexMarkers[0].setPosition(point1X, point1Y);
       
-      // Point 2 (bottom left vertex)
+      // Marker 2 (bottom left vertex) - green
       const leftRadians = radians + Math.PI * 2/3; // 120 degrees offset
       const point2X = baseX + Math.sin(leftRadians) * 10;
       const point2Y = baseY + Math.cos(leftRadians) * 10;
-      this.vertexLabels[1].setPosition(point2X, point2Y);
+      this.vertexMarkers[1].setPosition(point2X, point2Y);
       
-      // Point 3 (bottom right vertex)
+      // Marker 3 (bottom right vertex) - purple
       const rightRadians = radians - Math.PI * 2/3; // -120 degrees offset
       const point3X = baseX + Math.sin(rightRadians) * 10;
       const point3Y = baseY + Math.cos(rightRadians) * 10;
-      this.vertexLabels[2].setPosition(point3X, point3Y);
+      this.vertexMarkers[2].setPosition(point3X, point3Y);
     } else {
-      // Hide labels when arrow is not visible
-      this.vertexLabels.forEach(label => label.setVisible(false));
+      // Hide markers when arrow is not visible
+      this.vertexMarkers.forEach(marker => marker.setVisible(false));
     }
     
     // Update indicator position

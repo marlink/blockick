@@ -155,10 +155,10 @@ export default class SimpleShooterScene extends Phaser.Scene {
     // Note: In Phaser, 0/360 is at 3 o'clock, 90 is at 12 o'clock, 180 is at 9 o'clock, 270 is at 6 o'clock
     if (this.currentRotation > 270) {
       this.currentRotation = 270;
-      this.rotationDirection = -1;
+      this.rotationDirection = -1; // Change direction to counter-clockwise
     } else if (this.currentRotation < 90) {
       this.currentRotation = 90;
-      this.rotationDirection = 1;
+      this.rotationDirection = 1; // Change direction to clockwise
     }
     
     // If we're in the upper half (90-270), adjust to pass through 0/360 instead of 180
@@ -195,6 +195,7 @@ export default class SimpleShooterScene extends Phaser.Scene {
     
     // Calculate indicator position based on current rotation
     const radians = Phaser.Math.DegToRad(this.currentRotation);
+    // Position the indicator exactly at the top vertex of the triangle
     const indicatorDistance = 30; // Distance from center to tip of arrow
     const indicatorX = baseX + Math.sin(radians) * indicatorDistance;
     const indicatorY = baseY + Math.cos(radians) * indicatorDistance;
@@ -254,9 +255,9 @@ export default class SimpleShooterScene extends Phaser.Scene {
     // Change state to aiming
     this.aimingState = AimingState.AIMING;
     
-    // Reset rotation to starting position
-    this.currentRotation = 90;
-    this.rotationDirection = 1;
+    // Reset rotation to starting position (6 o'clock position)
+    this.currentRotation = 270;
+    this.rotationDirection = -1; // Start moving in opposite direction (counter-clockwise)
     
     // Make aiming components visible
     this.aimingCircle.setVisible(true);

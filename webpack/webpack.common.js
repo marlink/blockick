@@ -17,24 +17,21 @@ module.exports = {
   },
   optimization: {
     splitChunks: {
-      cacheGroups: {
-        commons: {
-          test: /[\\/]node_modules[\\/]/,
-          name: 'vendors',
-          chunks: 'all',
-          filename: '[name].bundle.js'
-        }
-      }
-    }
+      chunks: 'all',
+    },
   },
   plugins: [
-    new HtmlWebpackPlugin({ gameName: 'My Phaser Game', template: 'src/index.html' }),
+    new HtmlWebpackPlugin({
+      template: 'src/index.html',
+      filename: 'index.html',
+      inject: true
+    }),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/assets', to: 'assets' },
-        { from: 'pwa', to: '' },
-        { from: 'src/favicon.ico', to: '' }
+        { from: 'src/favicon.ico', to: 'favicon.ico' },
+        { from: 'pwa', to: 'pwa' }
       ]
     })
   ]
-}
+};

@@ -1,144 +1,74 @@
 import Phaser from 'phaser';
 
-enum AimingState {
+enum GameState {
   IDLE,
-  AIMING,
-  LOCKED,
+  ACTIVE,
   FIRING
 }
 
 export default class SimpleShooterScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle;
-  private projectiles!: Phaser.Physics.Arcade.Group;
-  private fireKey!: Phaser.Input.Keyboard.Key;
-  private leftKey!: Phaser.Input.Keyboard.Key;
-  private rightKey!: Phaser.Input.Keyboard.Key;
-  private lastFired: number = 0;
-  private fireRate: number = 200; // milliseconds between shots
+  // Game state
+  private gameState: GameState = GameState.IDLE;
   
-  // Aiming system components
-  private aimingState: AimingState = AimingState.IDLE;
-  private aimingCircle!: Phaser.GameObjects.Arc;
-  private aimingArrow!: Phaser.GameObjects.Triangle;
-  private directionIndicator!: Phaser.GameObjects.Arc; // Small circle at arrow tip
-  private vertexMarkers!: Phaser.GameObjects.Arc[]; // Array of markers for triangle vertices
-  private vertexPingTweens!: Phaser.Tweens.Tween[]; // Tweens for pulsing vertex markers
-  private currentRotation: number = 0;
-  private rotationDirection: number = 1; // 1 for clockwise, -1 for counter-clockwise
-  private rotationSpeed: number = 100; // degrees per second
-  private lockedDirection: number = 0;
-  private firingTimer!: Phaser.Time.TimerEvent;
+  // Visual components
+  private circleOutline!: Phaser.GameObjects.Arc;
+  private orbitingDot!: Phaser.GameObjects.Arc;
+  private projectiles!: Phaser.Physics.Arcade.Group;
+  
+  // Input
+  private spaceKey!: Phaser.Input.Keyboard.Key;
+  
+  // Orbit parameters
+  private orbitRadius: number = 40;
+  private orbitSpeed: number = 120; // degrees per second
+  private orbitAngle: number = 0; // current angle of the orbiting dot
+  private orbitDirection: number = 1; // 1 for clockwise, -1 for counter-clockwise
   
   constructor() {
     super({ key: 'SimpleShooterScene' });
   }
   
   create() {
-    // Set background color to green
+    // Set background color
     this.cameras.main.setBackgroundColor('#00FF00');
-    
-    // Create player block at bottom center
-    this.player = this.add.rectangle(
-      this.cameras.main.width / 2,
-      this.cameras.main.height - 50,
-      50,
-      30,
-      0x0000FF
-    );
-    
-    // Set up physics for player
-    this.physics.add.existing(this.player, false);
-    const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
-    playerBody.setCollideWorldBounds(true);
     
     // Create projectile group with physics
     this.projectiles = this.physics.add.group();
     
-    // Set up keyboard inputs
-    this.fireKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.leftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
-    this.rightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+    // Set up keyboard input
+    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     
-    // Initialize aiming components (initially invisible)
-    this.createAimingComponents();
+    // Create visual components
+    this.createVisualComponents();
     
     // Add one-time key down event for spacebar
     this.input.keyboard.on('keydown-SPACE', this.handleSpacebarPress, this);
   }
   
-  private createAimingComponents() {
-    // Create aiming circle (initially invisible)
-    this.aimingCircle = this.add.circle(0, 0, 40, 0xFFFFFF, 0.5);
-    this.aimingCircle.setVisible(false);
+  private createVisualComponents() {
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height - 100; // Position at bottom center
     
-    // Create aiming arrow (initially invisible)
-    // Important: In Phaser, triangles are drawn with origin at center by default
-    // We need to account for this in our vertex calculations
-    // Triangle vertices relative to center: (0, -30) is top, (-10, 0) is bottom-left, (10, 0) is bottom-right
-    this.aimingArrow = this.add.triangle(0, 0, 0, -30, -10, 0, 10, 0, 0xFF0000);
-    this.aimingArrow.setVisible(false);
-    this.aimingArrow.setOrigin(0.5, 0.5); // Explicitly set origin to center
-    // Note: Triangle's origin is at center (0.5, 0.5) by default in Phaser
-    // We need to account for this in our vertex marker calculations
+    // Create circle outline (stroke only, no fill)
+    this.circleOutline = this.add.circle(centerX, centerY, this.orbitRadius, 0xFFFFFF, 0);
+    this.circleOutline.setStrokeStyle(2, 0xFFFFFF); // White outline
+    this.circleOutline.setVisible(false);
     
-    // Create direction indicator at arrow tip (initially invisible)
-    this.directionIndicator = this.add.circle(0, 0, 2, 0xFF0000, 1);
-    this.directionIndicator.setVisible(false);
-
-    // Create vertex markers (initially invisible) - enhanced as ping dots
-    // Marker 1 (top vertex) - yellow
-    const marker1 = this.add.circle(0, 0, 3, 0xFFFF00, 1);
-    marker1.setVisible(false);
-    
-    // Marker 2 (bottom left vertex) - green
-    const marker2 = this.add.circle(0, 0, 3, 0x00FF00, 1);
-    marker2.setVisible(false);
-    
-    // Marker 3 (bottom right vertex) - purple
-    const marker3 = this.add.circle(0, 0, 3, 0xAA00FF, 1);
-    marker3.setVisible(false);
-    
-    this.vertexMarkers = [marker1, marker2, marker3];
-    
-    // Create pulsing animation tweens for vertex markers
-    this.vertexPingTweens = this.vertexMarkers.map(marker => {
-      return this.tweens.add({
-        targets: marker,
-        scale: { from: 0.5, to: 1.5 },
-        alpha: { from: 0.7, to: 1 },
-        duration: 600,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        paused: true
-      });
-    });
+    // Create orbiting dot (initially invisible)
+    this.orbitingDot = this.add.circle(centerX, centerY - this.orbitRadius, 4, 0xFFFFFF);
+    this.orbitingDot.setVisible(false);
   }
   
   update(time: number, delta: number) {
-    // Handle player movement
-    this.handlePlayerMovement();
-    
-    // Handle aiming rotation when in AIMING state
-    if (this.aimingState === AimingState.AIMING) {
-      this.updateAimingRotation(delta);
-    }
-    
-    // Update positions of aiming components to follow player
-    if (this.aimingState !== AimingState.IDLE) {
-      this.updateAimingComponentPositions();
-    }
-    
-    // Handle regular firing (when not using aiming system)
-    if (this.aimingState === AimingState.IDLE && this.fireKey.isDown && time > this.lastFired) {
-      this.fireProjectile(90); // Default upward direction (90 degrees)
-      this.lastFired = time + this.fireRate;
+    // Update orbiting dot position when active
+    if (this.gameState === GameState.ACTIVE) {
+      this.updateOrbitingDot(delta);
     }
     
     // Remove projectiles that go off screen
     const projectiles = this.projectiles.getChildren();
     for (let i = 0; i < projectiles.length; i++) {
-      const projectile = projectiles[i] as Phaser.GameObjects.Rectangle;
+      const projectile = projectiles[i] as Phaser.GameObjects.Arc;
       if (projectile.y < -20 || projectile.y > this.cameras.main.height + 20 ||
           projectile.x < -20 || projectile.x > this.cameras.main.width + 20) {
         projectile.destroy();
@@ -146,286 +76,115 @@ export default class SimpleShooterScene extends Phaser.Scene {
     }
   }
   
-  private handlePlayerMovement() {
-    const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
-    
-    // Reset velocity
-    playerBody.setVelocityX(0);
-    
-    // Handle left/right movement
-    if (this.leftKey.isDown) {
-      playerBody.setVelocityX(-200);
-    } else if (this.rightKey.isDown) {
-      playerBody.setVelocityX(200);
-    }
-  }
-  
-  private updateAimingRotation(delta: number) {
+  private updateOrbitingDot(delta: number) {
     // Calculate rotation amount based on delta time for smooth animation
-    const rotationAmount = (this.rotationSpeed * delta / 1000) * this.rotationDirection;
+    const rotationAmount = (this.orbitSpeed * delta / 1000) * this.orbitDirection;
     
-    // Update current rotation
-    this.currentRotation += rotationAmount;
+    // Update current angle
+    this.orbitAngle += rotationAmount;
     
-    // Keep rotation within 90-270 degrees range (12 o'clock to 6 o'clock, passing through 0/360°)
-    // Note: In Phaser, 0/360 is at 3 o'clock, 90 is at 12 o'clock, 180 is at 9 o'clock, 270 is at 6 o'clock
-    if (this.currentRotation > 270) {
-      this.currentRotation = 270;
-      this.rotationDirection = -1; // Change direction to counter-clockwise
-    } else if (this.currentRotation < 90) {
-      this.currentRotation = 90;
-      this.rotationDirection = 1; // Change direction to clockwise
+    // Keep angle within 0-180 degrees range (top semicircle only)
+    if (this.orbitAngle > 180) {
+      this.orbitAngle = 180;
+      this.orbitDirection = -1; // Change direction to counter-clockwise
+    } else if (this.orbitAngle < 0) {
+      this.orbitAngle = 0;
+      this.orbitDirection = 1; // Change direction to clockwise
     }
     
-    // If we're in the upper half (90-270), adjust to pass through 0/360 instead of 180
-    if (this.currentRotation >= 90 && this.currentRotation <= 270) {
-      // Map 90-270 to 90-0-270 (passing through 0/360 at the top of the circle)
-      let mappedRotation;
-      if (this.currentRotation < 180) {
-        // Map 90-180 to 90-0
-        mappedRotation = 90 - (this.currentRotation - 90) * (90 / 90);
-      } else {
-        // Map 180-270 to 360-270
-        mappedRotation = 360 - (this.currentRotation - 180) * (90 / 90);
-      }
-      
-      // Apply the mapped rotation to the arrow
-      const radians = Phaser.Math.DegToRad(mappedRotation);
-      this.aimingArrow.setRotation(radians);
-      return; // Skip the normal rotation application below
-    }
+    // Calculate new position on the circle
+    const centerX = this.circleOutline.x;
+    const centerY = this.circleOutline.y;
+    const angleRadians = Phaser.Math.DegToRad(this.orbitAngle);
     
-    // Apply rotation to arrow (convert to radians)
-    const radians = Phaser.Math.DegToRad(this.currentRotation);
-    this.aimingArrow.setRotation(radians);
-  }
-  
-  private updateAimingComponentPositions() {
-    // Position aiming components at player's position
-    const baseX = this.player.x;
-    const baseY = this.player.y - 20;
+    // In Phaser, 0 degrees is at 3 o'clock, so we need to adjust to make 0 at 9 o'clock and 180 at 3 o'clock
+    // for the top semicircle
+    const adjustedAngleRadians = Math.PI - angleRadians;
     
-    // Set base positions
-    this.aimingCircle.setPosition(baseX, baseY);
-    this.aimingArrow.setPosition(baseX, baseY);
+    // Calculate position on the circle
+    const x = centerX + Math.cos(adjustedAngleRadians) * this.orbitRadius;
+    const y = centerY - Math.sin(adjustedAngleRadians) * this.orbitRadius; // Subtract to go up from center
     
-    // Calculate indicator position based on current rotation
-    const radians = Phaser.Math.DegToRad(this.currentRotation);
-    
-    // Position the indicator exactly at the top vertex of the triangle
-    // Original top vertex is at (0, -30)
-    const topX = 0;
-    const topY = -30; 
-    
-    // Rotate the vertex coordinates using standard 2D rotation formula
-    const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians); // Full rotation for (0, -30)
-    const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians); // Full rotation for (0, -30)
-    const indicatorX = baseX + rotatedTopX;
-    const indicatorY = baseY + rotatedTopY;
-    
-    // Update vertex marker positions
-    if (this.aimingArrow.visible) {
-      // Make markers visible and start pulsing animations
-      this.vertexMarkers.forEach((marker, index) => {
-        marker.setVisible(true);
-        if (this.vertexPingTweens[index].isPaused()) {
-          this.vertexPingTweens[index].resume();
-        }
-      });
-      
-      // Calculate vertex positions based on triangle's actual vertices and current rotation
-      // Original triangle vertices relative to center: (0, -30), (-10, 0), (10, 0)
-      // We need to rotate these points and position them relative to the base position
-      
-      // Marker 1 (top vertex) - yellow - original position (0, -30)
-      const topX = 0;
-      const topY = -30;
-      const rotatedTopX = topX * Math.cos(radians) - topY * Math.sin(radians); // Full rotation for (0, -30)
-      const rotatedTopY = topX * Math.sin(radians) + topY * Math.cos(radians); // Full rotation for (0, -30)
-      // Position exactly at the vertex
-      this.vertexMarkers[0].setPosition(baseX + rotatedTopX, baseY + rotatedTopY);
-      
-      // Marker 2 (bottom left vertex) - green - original position (-10, 0)
-      const leftX = -10;
-      const leftY = 0;
-      const rotatedLeftX = leftX * Math.cos(radians) - leftY * Math.sin(radians); // Correct rotation for (-10, 0)
-      const rotatedLeftY = leftY * Math.sin(radians) + leftX * Math.cos(radians); // Fixed: using leftY in sin component
-      // Position exactly at the vertex
-      this.vertexMarkers[1].setPosition(baseX + rotatedLeftX, baseY + rotatedLeftY);
-      
-      // Marker 3 (bottom right vertex) - purple - original position (10, 0)
-      const rightX = 10;
-      const rightY = 0;
-      const rotatedRightX = rightX * Math.cos(radians) - rightY * Math.sin(radians); // Correct rotation for (10, 0)
-      const rotatedRightY = rightY * Math.sin(radians) + rightX * Math.cos(radians); // Fixed: using rightY in sin component
-      // Position exactly at the vertex
-      this.vertexMarkers[2].setPosition(baseX + rotatedRightX, baseY + rotatedRightY);
-    } else {
-      // Hide markers and pause pulsing animations when arrow is not visible
-      this.vertexMarkers.forEach((marker, index) => {
-        marker.setVisible(false);
-        this.vertexPingTweens[index].pause();
-      });
-    }
-    
-    // Update indicator position
-    this.directionIndicator.setPosition(indicatorX, indicatorY);
+    // Update dot position
+    this.orbitingDot.setPosition(x, y);
   }
   
   private handleSpacebarPress() {
     // State machine for spacebar presses
-    switch (this.aimingState) {
-      case AimingState.IDLE:
-        // First press: activate aiming mode
-        this.activateAimingMode();
+    switch (this.gameState) {
+      case GameState.IDLE:
+        // First press: activate the system
+        this.activateSystem();
         break;
         
-      case AimingState.AIMING:
-        // Second press: lock direction and prepare to fire
-        this.lockAimingDirection();
+      case GameState.ACTIVE:
+        // Second press: fire projectile
+        this.fireProjectile();
         break;
         
-      case AimingState.LOCKED:
-      case AimingState.FIRING:
-        // Ignore additional presses while locked or firing
+      case GameState.FIRING:
+        // Ignore additional presses while firing
         break;
     }
   }
   
-  private activateAimingMode() {
-    // Change state to aiming
-    this.aimingState = AimingState.AIMING;
+  private activateSystem() {
+    // Change state to active
+    this.gameState = GameState.ACTIVE;
     
-    // Reset rotation to starting position (6 o'clock position)
-    this.currentRotation = 270;
-    this.rotationDirection = -1; // Start moving in opposite direction (counter-clockwise)
+    // Reset orbit angle to start position (left side of semicircle)
+    this.orbitAngle = 0;
+    this.orbitDirection = 1; // Start moving clockwise
     
-    // Make aiming components visible
-    this.aimingCircle.setVisible(true);
-    this.aimingArrow.setVisible(true);
-    this.directionIndicator.setVisible(true);
+    // Make components visible
+    this.circleOutline.setVisible(true);
+    this.orbitingDot.setVisible(true);
     
-    // Make vertex markers visible and start pulsing animations
-    this.vertexMarkers.forEach((marker, index) => {
-      marker.setVisible(true);
-      this.vertexPingTweens[index].resume();
-    });
-    
-    // Position at player
-    this.updateAimingComponentPositions();
+    // Update dot position immediately
+    this.updateOrbitingDot(0);
   }
   
-  private lockAimingDirection() {
-    // Change state to locked
-    this.aimingState = AimingState.LOCKED;
-    
-    // Store the locked direction
-    this.lockedDirection = this.currentRotation;
-    
-    // Visual feedback for locked state
-    this.aimingCircle.setFillStyle(0xFFAA00, 0.7); // Change color to orange
-    
-    // Ensure vertex markers are visible and pulsing animations are running
-    this.vertexMarkers.forEach((marker, index) => {
-      marker.setVisible(true);
-      if (this.vertexPingTweens[index].isPaused()) {
-        this.vertexPingTweens[index].resume();
-      }
-    });
-    
-    // Schedule firing after 500ms (0.5 seconds)
-    this.firingTimer = this.time.delayedCall(500, this.fireLockedProjectile, [], this);
-  }
-  
-  private fireLockedProjectile() {
+  private fireProjectile() {
     // Change state to firing
-    this.aimingState = AimingState.FIRING;
+    this.gameState = GameState.FIRING;
     
-    // Fire projectile in the locked direction
-    this.fireProjectile(this.lockedDirection);
+    // Get current position of the orbiting dot
+    const startX = this.orbitingDot.x;
+    const startY = this.orbitingDot.y;
     
-    // Reset aiming system after firing
-    this.resetAimingSystem();
-  }
-  
-  private resetAimingSystem() {
-    // Reset state to idle
-    this.aimingState = AimingState.IDLE;
+    // Calculate direction from circle center to dot
+    const centerX = this.circleOutline.x;
+    const centerY = this.circleOutline.y;
+    const directionX = startX - centerX;
+    const directionY = startY - centerY;
     
-    // Hide aiming components
-    this.aimingCircle.setVisible(false);
-    this.aimingArrow.setVisible(false);
-    this.directionIndicator.setVisible(false);
+    // Normalize direction vector
+    const length = Math.sqrt(directionX * directionX + directionY * directionY);
+    const normalizedDirX = directionX / length;
+    const normalizedDirY = directionY / length;
     
-    // Hide vertex markers and pause pulsing animations
-    this.vertexMarkers.forEach((marker, index) => {
-      marker.setVisible(false);
-      this.vertexPingTweens[index].pause();
-    });
-    
-    // Reset circle color
-    this.aimingCircle.setFillStyle(0xFFFFFF, 0.5);
-  }
-  
-  private fireProjectile(angleDegrees: number) {
-    // Convert angle from degrees to radians
-    const angleRadians = Phaser.Math.DegToRad(angleDegrees);
-    
-    // Calculate velocity components based on angle
-    // Note: 90 degrees is straight up, 0 is right, 180 is left
-    const velocityX = Math.sin(angleRadians) * 300; // Positive sin to go in the direction of the blue indicator
-    const velocityY = Math.cos(angleRadians) * 300; // Positive cos to go in the direction of the blue indicator
-    
-    // Create projectile at player position
-    const projectile = this.add.rectangle(
-      this.player.x,
-      this.player.y - 20,
-      10,
-      20,
-      0xFF0000
-    );
-    
-    // Rotate projectile to match firing angle
-    projectile.setRotation(angleRadians);
+    // Create projectile at dot position
+    const projectile = this.add.circle(startX, startY, 5, 0xFF0000);
     
     // Add to physics group and enable physics
     this.projectiles.add(projectile);
     this.physics.add.existing(projectile);
     
-    // Set velocity based on angle
+    // Set velocity based on direction
     const body = projectile.body as Phaser.Physics.Arcade.Body;
-    body.setVelocity(velocityX, velocityY);
+    const speed = 300;
+    body.setVelocity(normalizedDirX * speed, normalizedDirY * speed);
     
-    // Add visual feedback (muzzle flash)
-    this.addMuzzleFlash(angleDegrees);
+    // Reset system after firing
+    this.resetSystem();
   }
   
-  private addMuzzleFlash(angleDegrees: number) {
-    // Convert angle from degrees to radians
-    const angleRadians = Phaser.Math.DegToRad(angleDegrees);
+  private resetSystem() {
+    // Reset state to idle
+    this.gameState = GameState.IDLE;
     
-    // Calculate position offset for the flash based on angle
-    const offsetX = Math.sin(angleRadians) * 20; // Offset in direction of firing
-    const offsetY = Math.cos(angleRadians) * 20; // Offset in direction of firing
-    
-    // Create flash effect
-    const flash = this.add.rectangle(
-      this.player.x + offsetX,
-      this.player.y - 20 + offsetY,
-      20,
-      10,
-      0xFFFF00
-    );
-    
-    // Rotate flash to match firing angle
-    flash.setRotation(angleRadians);
-    
-    // Fade out and destroy
-    this.tweens.add({
-      targets: flash,
-      alpha: 0,
-      duration: 100,
-      onComplete: () => flash.destroy()
-    });
+    // Hide components
+    this.circleOutline.setVisible(false);
+    this.orbitingDot.setVisible(false);
   }
 }

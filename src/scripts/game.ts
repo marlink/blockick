@@ -1,3 +1,8 @@
+/**
+ * Mamba Kick Game - Working Version v0.2
+ * Main game configuration and initialization
+ */
+
 import Phaser from 'phaser'
 import MainScene from './scenes/mainScene'
 import SimpleShooterScene from './scenes/simpleShooterScene'

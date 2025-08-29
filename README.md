@@ -2,12 +2,12 @@
   <br>
   <a href="https://github.com/yandeu/phaser-project-template#readme"><img src="readme/header.png" alt="header" width="600"></a>
   <br>
-  Phaser 3 TypeScript Starter Template
+  Mamba Kick Game v0.2
   <br>
 </h1>
 
 <h4 align="center">
-A starter template for <a href="https://phaser.io/" target="_blank" >Phaser 3</a> with <a href="https://www.typescriptlang.org/index.html" target="_blank" >TypeScript</a> and <a href="https://webpack.js.org/" target="_blank" >webpack</a> for building excellent html5-games that work great in the browser and on mobile devices.</h4>
+A simple Phaser 3 game with shooting mechanics and destructible obstacles. This version includes a developer menu with version control functionality.</h4>
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT" title="License: MIT" >
@@ -42,23 +42,29 @@ A starter template for <a href="https://phaser.io/" target="_blank" >Phaser 3</a
 
 ## Key Features
 
-- **ESNext** features ready (async/await, Rest/Spread operators)
-- Code Splitting
-- Obfuscation
-- Development Server with SourceMap and Live-Reload
-- PWA ready with offline support and "Add to Home screen" install prompt
-- Easy to build Native App using Capacitor
-- Includes Phaser 3 TypeScript typings
-- For development and production builds
-- Adds a webpack ContentHash to the JavaScript files (in production)
+- Simple shooting mechanics with strength and direction control
+- Destructible obstacles with particle effects
+- Developer menu with game reset and version switching
+- Version control system for managing different game versions
+- Built with Phaser 3, TypeScript, and webpack
 
-## Preview
+## How to Play
 
-This is what you get after installing this template. A simple and clean starter template written in TypeScript. [Try it!](https://s3.eu-central-1.amazonaws.com/phaser3-typescript/starter-template/index.html)
+1. Press SPACE to start the game
+2. Press SPACE again to set the strength of the shot
+3. Press SPACE a third time to set the direction and fire the projectile
+4. Try to destroy all the blocks with the fewest shots
 
-<a href="https://s3.eu-central-1.amazonaws.com/phaser3-typescript/starter-template/index.html">
-<img src="readme/screenshot.png" width="640" style='border: 0.25em solid #e1e4e8;border-radius: 20px;'/>
-</a>
+## Developer Menu
+
+Click the "D" button in the bottom-right corner to open the developer menu. From there, you can:
+
+- Reset the game
+- Switch between different game versions (v0.1 and v0.2)
+
+## Version Control
+
+The game includes a version control system that allows switching between different versions. See [VERSION_CONTROL.md](VERSION_CONTROL.md) for more details.
 
 ## How To Use
 

@@ -1,27 +1,53 @@
+/**
+ * Mamba Kick Game - Working Version v0.2
+ * Main game scene with shooting mechanics
+ */
+
 import Phaser from 'phaser';
+import Obstacle from '../objects/obstacle';
+import DeveloperMenu from '../objects/developerMenu';
+import VersionManager from '../utils/versionManager';
 
 enum GameState {
   IDLE,
-  ACTIVE,
+  DIRECTION_SELECTION,
   STRENGTH_SELECTION,
-  FIRING
+  FIRING,
+  WIN
 }
 
 export default class SimpleShooterScene extends Phaser.Scene {
   // Game state
   private gameState: GameState = GameState.IDLE;
   
+  // Direction and strength tracking
+  private lockedDirectionX: number = 0;
+  private lockedDirectionY: number = 0;
+  
+  // Obstacle system
+  private obstacle!: Obstacle;
+  private winText!: Phaser.GameObjects.Text;
+  
   // Visual components
   private circleOutline!: Phaser.GameObjects.Arc;
   private orbitingDot!: Phaser.GameObjects.Arc;
   private strengthIndicator!: Phaser.GameObjects.Arc;
+  private directionLine!: Phaser.GameObjects.Line;
+  private stateText!: Phaser.GameObjects.Text;
   private projectiles!: Phaser.Physics.Arcade.Group;
+  
+  // Developer menu
+  private developerMenu!: DeveloperMenu;
   
   // World boundaries for collision
   private worldBounds!: Phaser.Physics.Arcade.StaticGroup;
   
   // Input
   private spaceKey!: Phaser.Input.Keyboard.Key;
+  private lastSpacebarPressTime: number = 0;
+  private spacebarCooldown: number = 250; // Cooldown in ms to prevent rapid presses
+  private strengthSelectionStartTime: number = 0; // When strength selection began
+  private inputBuffer: boolean = false; // Buffer for queued spacebar presses
   
   // Orbit parameters
   private orbitRadius: number = 40;
@@ -30,7 +56,10 @@ export default class SimpleShooterScene extends Phaser.Scene {
   private orbitDirection: number = 1; // 1 for clockwise, -1 for counter-clockwise
   
   // Strength indicator parameters
-  private strengthPulseSpeed: number = 1.5; // full cycles per second
+  private baseStrengthPulseSpeed: number = 1.5; // Base speed in full cycles per second
+  private currentStrengthPulseSpeed: number = 1.5; // Current speed (increases over time)
+  private pulseAccelerationRate: number = 0.2; // How quickly the pulse speed increases per second
+  private maxPulseSpeed: number = 3.0; // Maximum pulse speed in cycles per second
   private strengthPulseTime: number = 0;
   private minStrengthRadius: number = 10;
   private maxStrengthRadius: number = this.orbitRadius - 5;
@@ -41,7 +70,21 @@ export default class SimpleShooterScene extends Phaser.Scene {
     super({ key: 'SimpleShooterScene' });
   }
   
+  preload() {
+    // Load particle texture for block destruction
+    this.load.image('particle', 'assets/particle.svg');
+  }
+  
   create() {
+    // Register version v0.1 for demonstration purposes
+    const versionManager = VersionManager.getInstance();
+    versionManager.registerVersion({
+      id: 'v0.1',
+      name: 'Version 0.1',
+      description: 'Initial version with basic shooting mechanics',
+      isActive: false
+    });
+    
     // Create gradient background with multiple shades of green
     this.createGradientBackground();
     
@@ -61,8 +104,19 @@ export default class SimpleShooterScene extends Phaser.Scene {
     // Create world boundaries
     this.createWorldBoundaries();
     
+    // Create obstacle
+    this.createObstacle();
+    
+    // Create win text (initially hidden)
+    this.createWinText();
+    
     // Add one-time key down event for spacebar
     this.input.keyboard.on('keydown-SPACE', this.handleSpacebarPress, this);
+    
+    // Create developer menu in the bottom-right corner
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    this.developerMenu = new DeveloperMenu(this, width - 20, height - 20);
   }
   
   private createWorldBoundaries() {
@@ -111,21 +165,104 @@ export default class SimpleShooterScene extends Phaser.Scene {
     this.strengthIndicator = this.add.circle(centerX, centerY, this.minStrengthRadius, 0x00FFFF, 0);
     this.strengthIndicator.setStrokeStyle(2, 0x00FFFF); // Cyan outline
     this.strengthIndicator.setVisible(false);
+    
+    // Create the direction line (initially invisible)
+    this.directionLine = this.add.line(0, 0, centerX, centerY, centerX, centerY, 0xFFFFFF);
+    this.directionLine.setLineWidth(2);
+    this.directionLine.setVisible(false);
+    
+    // Create state text indicator
+    this.stateText = this.add.text(10, 10, 'State: IDLE', { 
+      fontFamily: 'Arial', 
+      fontSize: '16px',
+      color: '#FFFFFF'
+    });
+    this.updateStateText();
+  }
+  
+  private createWinText() {
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 2;
+    
+    this.winText = this.add.text(centerX, centerY, 'Well done!', {
+      color: '#FFFFFF',
+      fontSize: '48px',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    
+    this.winText.setVisible(false);
+  }
+  
+  private createObstacle() {
+    const width = this.cameras.main.width;
+    
+    // Randomly choose position (left, center, or right)
+    const positions = [
+      width * 0.25,  // Left
+      width * 0.5,   // Center
+      width * 0.75   // Right
+    ];
+    
+    const randomPosition = Phaser.Math.RND.pick(positions);
+    
+    // Create obstacle at the top of the screen
+    this.obstacle = new Obstacle(this, randomPosition, 30);
+    
+    // Set up collision between projectiles and obstacle blocks
+    this.physics.add.collider(
+      this.projectiles,
+      this.obstacle.getBlockGroup(),
+      (projectile, block) => {
+        // Cast to the correct types
+        this.handleProjectileBlockCollision(
+          projectile as Phaser.Types.Physics.Arcade.GameObjectWithBody,
+          block as Phaser.Types.Physics.Arcade.GameObjectWithBody
+        );
+        return false; // Don't destroy the projectile
+      },
+      undefined,
+      this
+    );
   }
   
   update(time: number, delta: number) {
-    // Update orbiting dot position when active
-    if (this.gameState === GameState.ACTIVE || this.gameState === GameState.STRENGTH_SELECTION) {
+    // Update orbiting dot position when in direction selection mode
+    if (this.gameState === GameState.DIRECTION_SELECTION) {
       this.updateOrbitingDot(delta);
     }
     
     // Update strength indicator when in strength selection mode
     if (this.gameState === GameState.STRENGTH_SELECTION) {
       this.updateStrengthIndicator(delta);
+      
+      // Fail-safe: If strength selection has been active for too long (5 seconds),
+      // automatically fire with current strength to prevent getting stuck
+      const elapsedTime = (time - this.strengthSelectionStartTime);
+      if (elapsedTime > 5000) { // 5 seconds max for strength selection
+        this.lockStrengthAndFire();
+      }
+    }
+    
+    // Check win condition
+    if (this.obstacle && this.obstacle.isCompleted() && this.gameState !== GameState.WIN) {
+      this.handleWin();
     }
     
     // Update projectiles
     this.updateProjectiles(delta);
+    
+    // Process input buffer if we're in a state that can accept input
+    // and enough time has passed since the last spacebar press
+    if (this.inputBuffer && 
+        (time - this.lastSpacebarPressTime) >= this.spacebarCooldown && 
+        (this.gameState === GameState.IDLE || 
+         this.gameState === GameState.DIRECTION_SELECTION || 
+         this.gameState === GameState.STRENGTH_SELECTION)) {
+      this.handleSpacebarPress();
+    }
+    
+    // Fail-safe: Check if any UI elements are in inconsistent states
+    this.validateGameState();
   }
   
   private updateProjectiles(delta: number) {
@@ -158,11 +295,20 @@ export default class SimpleShooterScene extends Phaser.Scene {
   }
   
   private updateStrengthIndicator(delta: number) {
+    // Calculate elapsed time since strength selection started (in seconds)
+    const elapsedTime = (this.time.now - this.strengthSelectionStartTime) / 1000;
+    
+    // Accelerate the pulse speed over time, capped at maximum
+    this.currentStrengthPulseSpeed = Math.min(
+      this.baseStrengthPulseSpeed + (this.pulseAccelerationRate * elapsedTime),
+      this.maxPulseSpeed
+    );
+    
     // Update pulse time
     this.strengthPulseTime += delta / 1000;
     
     // Calculate current radius using sine wave for smooth pulsation
-    const pulsePhase = Math.sin(this.strengthPulseTime * Math.PI * this.strengthPulseSpeed);
+    const pulsePhase = Math.sin(this.strengthPulseTime * Math.PI * this.currentStrengthPulseSpeed);
     
     // Convert from -1,1 range to 0,1 range
     const normalizedPulse = (pulsePhase + 1) / 2;
@@ -230,16 +376,32 @@ export default class SimpleShooterScene extends Phaser.Scene {
   }
   
   private handleSpacebarPress() {
+    // Implement debounce to prevent rapid presses
+    const currentTime = this.time.now;
+    if (currentTime - this.lastSpacebarPressTime < this.spacebarCooldown) {
+      // Queue the input for later processing if we're in a state that can accept input
+      if (this.gameState === GameState.IDLE || 
+          this.gameState === GameState.DIRECTION_SELECTION || 
+          this.gameState === GameState.STRENGTH_SELECTION) {
+        this.inputBuffer = true;
+      }
+      return;
+    }
+    
+    // Update the last press time
+    this.lastSpacebarPressTime = currentTime;
+    this.inputBuffer = false; // Clear the buffer as we're processing this press
+    
     // State machine for spacebar presses
     switch (this.gameState) {
       case GameState.IDLE:
-        // First press: activate the system
-        this.activateSystem();
+        // First press: activate the system for direction selection
+        this.activateDirectionSelection();
         break;
         
-      case GameState.ACTIVE:
-        // Second press: start strength selection
-        this.startStrengthSelection();
+      case GameState.DIRECTION_SELECTION:
+        // Second press: lock direction and start strength selection
+        this.lockDirectionAndStartStrengthSelection();
         break;
         
       case GameState.STRENGTH_SELECTION:
@@ -248,14 +410,20 @@ export default class SimpleShooterScene extends Phaser.Scene {
         break;
         
       case GameState.FIRING:
-        // Ignore additional presses while firing
+        // Ignore additional presses while firing, but buffer it for when we return to IDLE
+        this.inputBuffer = true;
+        break;
+        
+      case GameState.WIN:
+        // Ignore presses during win state
         break;
     }
   }
   
-  private activateSystem() {
-    // Change state to active
-    this.gameState = GameState.ACTIVE;
+  private activateDirectionSelection() {
+    // Change state to direction selection
+    this.gameState = GameState.DIRECTION_SELECTION;
+    this.updateStateText();
     
     // Reset orbit angle to start position (left side of semicircle)
     this.orbitAngle = 0;
@@ -264,16 +432,26 @@ export default class SimpleShooterScene extends Phaser.Scene {
     // Make components visible
     this.circleOutline.setVisible(true);
     this.orbitingDot.setVisible(true);
+    this.orbitingDot.fillColor = 0x00FFFF; // Cyan for active selection
     
     // Update dot position immediately
     this.updateOrbitingDot(0);
   }
   
-  private startStrengthSelection() {
+  private lockDirectionAndStartStrengthSelection() {
+    // Lock the current direction
+    const centerX = this.circleOutline.x;
+    const centerY = this.circleOutline.y;
+    this.lockedDirectionX = this.orbitingDot.x - centerX;
+    this.lockedDirectionY = this.orbitingDot.y - centerY;
+    
     // Change state to strength selection
     this.gameState = GameState.STRENGTH_SELECTION;
+    this.updateStateText();
     
-    // Reset strength pulse time
+    // Reset strength pulsation parameters and record the start time for strength selection
+    this.strengthSelectionStartTime = this.time.now;
+    this.currentStrengthPulseSpeed = this.baseStrengthPulseSpeed;
     this.strengthPulseTime = 0;
     this.currentStrengthRadius = this.minStrengthRadius;
     
@@ -282,36 +460,55 @@ export default class SimpleShooterScene extends Phaser.Scene {
     
     // Set initial color (green for minimum strength)
     this.strengthIndicator.setStrokeStyle(2, 0x00FF00);
+    
+    // Update direction line to show locked direction
+    this.directionLine.setTo(centerX, centerY, centerX + this.lockedDirectionX, centerY + this.lockedDirectionY);
+    this.directionLine.setVisible(true);
+    
+    // Change orbiting dot color to indicate it's locked
+    this.orbitingDot.fillColor = 0xFFFF00; // Yellow
   }
   
   private lockStrengthAndFire() {
     // Lock the current strength value
     const lockedStrength = this.currentStrength;
     
-    // Fire projectile with the locked strength
+    // Get the center coordinates
+    const centerX = this.circleOutline.x;
+    const centerY = this.circleOutline.y;
+    
+    // Use the locked direction vector (set during direction locking)
+    const directionX = this.lockedDirectionX;
+    const directionY = this.lockedDirectionY;
+    
+    // Change state to firing
+    this.gameState = GameState.FIRING;
+    this.updateStateText();
+    
+    // Change strength indicator color to indicate firing
+    this.strengthIndicator.fillColor = 0xFF0000; // Red
+    
+    // Fire projectile with the locked strength and direction
     this.fireProjectile(lockedStrength);
   }
   
   private fireProjectile(strength: number) {
-    // Change state to firing
-    this.gameState = GameState.FIRING;
-    
-    // Get current position of the orbiting dot
-    const startX = this.orbitingDot.x;
-    const startY = this.orbitingDot.y;
-    
-    // Calculate direction from circle center to dot
+    // Get the center coordinates
     const centerX = this.circleOutline.x;
     const centerY = this.circleOutline.y;
-    const directionX = startX - centerX;
-    const directionY = startY - centerY;
+    
+    // Use the locked direction vector (set during direction locking)
+    const directionX = this.lockedDirectionX;
+    const directionY = this.lockedDirectionY;
     
     // Normalize direction vector
     const length = Math.sqrt(directionX * directionX + directionY * directionY);
     const normalizedDirX = directionX / length;
     const normalizedDirY = directionY / length;
     
-    // Create projectile at dot position
+    // Create projectile at the position where the orbiting dot was locked
+    const startX = centerX + directionX;
+    const startY = centerY + directionY;
     const projectile = this.add.circle(startX, startY, 5, 0xFF0000);
     
     // Add to physics group and enable physics
@@ -381,11 +578,127 @@ export default class SimpleShooterScene extends Phaser.Scene {
   private resetSystem() {
     // Reset state to idle
     this.gameState = GameState.IDLE;
+    this.updateStateText();
     
     // Hide components
     this.circleOutline.setVisible(false);
     this.orbitingDot.setVisible(false);
     this.strengthIndicator.setVisible(false);
+    this.directionLine.setVisible(false);
+    
+    // Reset timing variables and input buffer
+    this.lastSpacebarPressTime = 0;
+    this.strengthSelectionStartTime = 0;
+    this.strengthPulseTime = 0;
+    this.inputBuffer = false;
+  }
+  
+  /**
+   * Public method to reset the game
+   * This can be called from the developer menu
+   */
+  public resetGame() {
+    // Clear any active projectiles
+    this.projectiles.clear(true, true);
+    
+    // Reset the game state
+    this.resetSystem();
+    
+    // Recreate the obstacle if it's empty
+    if (this.obstacle.getBlockCount() === 0) {
+      this.obstacle.destroy();
+      this.createObstacle();
+    }
+  }
+  
+  /**
+   * Handle version switching
+   * This method will be called when switching between game versions
+   */
+  public handleVersionChange(versionId: string): void {
+    console.log(`Scene handling version change to: ${versionId}`);
+    
+    // Reset the game when switching versions
+    this.resetGame();
+    
+    // In a more complex implementation, this would load version-specific
+    // assets, game mechanics, or other changes
+    
+    // For now, we just update the state text to show the current version
+    if (this.stateText) {
+      this.updateStateText();
+    }
+  }
+  
+  private updateStateText() {
+    let stateString = 'IDLE';
+    
+    switch (this.gameState) {
+      case GameState.IDLE:
+        stateString = 'IDLE - Press SPACE to start';
+        break;
+      case GameState.DIRECTION_SELECTION:
+        stateString = 'SELECT DIRECTION - Press SPACE to lock';
+        break;
+      case GameState.STRENGTH_SELECTION:
+        stateString = 'SELECT STRENGTH - Press SPACE to fire';
+        break;
+      case GameState.FIRING:
+        stateString = 'FIRING';
+        break;
+      case GameState.WIN:
+        stateString = 'YOU WIN!';
+        break;
+    }
+    
+    // Get current version
+    const versionManager = VersionManager.getInstance();
+    const currentVersion = versionManager.getCurrentVersion();
+    const versionId = currentVersion ? currentVersion.id : 'unknown';
+    
+    this.stateText.setText(`State: ${stateString} (${versionId})`);
+  }
+  
+  private handleProjectileBlockCollision(projectile: Phaser.Types.Physics.Arcade.GameObjectWithBody, block: Phaser.Types.Physics.Arcade.GameObjectWithBody) {
+    // Destroy the block but not the projectile
+    this.obstacle.destroyBlock(block);
+    
+    // No need to destroy the projectile - it will continue bouncing
+    return false; // Return false to prevent the projectile from being destroyed
+  }
+  
+  private handleWin() {
+    // Set game state to WIN
+    this.gameState = GameState.WIN;
+    this.updateStateText();
+    
+    // Show win text
+    this.winText.setVisible(true);
+    
+    // Hide other UI elements
+    this.stateText.setVisible(false);
+    this.directionLine.setVisible(false);
+    this.strengthIndicator.setVisible(false);
+    this.circleOutline.setVisible(false);
+    this.orbitingDot.setVisible(false);
+    
+    // Reset the game after a delay
+    this.time.delayedCall(3000, () => {
+      // Destroy old obstacle
+      if (this.obstacle) {
+        this.obstacle.destroy();
+      }
+      
+      // Create new obstacle
+      this.createObstacle();
+      
+      // Reset game state
+      this.resetSystem();
+      
+      // Show state text again
+      this.stateText.setVisible(true);
+      this.winText.setVisible(false);
+    });
   }
   
   private createGradientBackground() {
@@ -461,5 +774,43 @@ export default class SimpleShooterScene extends Phaser.Scene {
     context.beginPath();
     context.arc(width/2, height/2, 50, 0, Math.PI * 2);
     context.stroke();
+  }
+  
+  /**
+   * Validates the current game state and fixes any inconsistencies
+   * This acts as a fail-safe to prevent the game from getting stuck
+   */
+  private validateGameState() {
+    // Check for inconsistent states
+    const currentTime = this.time.now;
+    
+    // Case 1: If in DIRECTION_SELECTION for too long (10 seconds), reset
+    if (this.gameState === GameState.DIRECTION_SELECTION) {
+      if (currentTime - this.lastSpacebarPressTime > 10000) {
+        console.log('Direction selection timeout - resetting');
+        this.resetSystem();
+        return;
+      }
+    }
+    
+    // Case 2: If in FIRING state but no active projectiles, reset to IDLE
+    if (this.gameState === GameState.FIRING && this.projectiles.countActive() === 0) {
+      console.log('No active projectiles in FIRING state - resetting');
+      this.resetSystem();
+      return;
+    }
+    
+    // Case 3: Check for visual inconsistencies
+    if (this.gameState === GameState.IDLE) {
+      // In IDLE state, all UI elements should be hidden
+      if (this.circleOutline.visible || this.orbitingDot.visible || 
+          this.strengthIndicator.visible || this.directionLine.visible) {
+        console.log('Visual inconsistency in IDLE state - fixing');
+        this.circleOutline.setVisible(false);
+        this.orbitingDot.setVisible(false);
+        this.strengthIndicator.setVisible(false);
+        this.directionLine.setVisible(false);
+      }
+    }
   }
 }

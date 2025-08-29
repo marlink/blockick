@@ -10,15 +10,12 @@ export default class DeveloperMenu extends Phaser.GameObjects.Container {
   private menuButton: Phaser.GameObjects.Container;
   private menuPanel: Phaser.GameObjects.Container;
   private isPanelOpen: boolean = false;
-  // Using public to match the base class
-  public scene: Phaser.Scene;
   private versionManager: VersionManager;
   
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
-    this.scene = scene;
-    // Fix the type error by using the scene directly
-    this.scene.add.existing(this);
+    // Fix the type error by using the scene's add method
+    scene.add.existing(this);
     
     // Get the version manager instance
     this.versionManager = VersionManager.getInstance();
@@ -39,14 +36,14 @@ export default class DeveloperMenu extends Phaser.GameObjects.Container {
   }
   
   private createMenuButton(): Phaser.GameObjects.Container {
-    const container = new Phaser.GameObjects.Container(this.scene, 0, 0);
+    const container = new Phaser.GameObjects.Container(this.scene as Phaser.Scene, 0, 0);
     
     // Create button background
-    const bg = this.scene.add.rectangle(0, 0, 20, 20, 0x333333, 0.8);
+    const bg = (this.scene as Phaser.Scene).add.rectangle(0, 0, 20, 20, 0x333333, 0.8);
     bg.setStrokeStyle(1, 0xffffff);
     
     // Create button text
-    const text = this.scene.add.text(0, 0, 'D', {
+    const text = (this.scene as Phaser.Scene).add.text(0, 0, 'D', {
       fontFamily: 'Arial',
       fontSize: '8px',
       color: '#ffffff'
@@ -60,10 +57,10 @@ export default class DeveloperMenu extends Phaser.GameObjects.Container {
   }
   
   private createMenuPanel(): Phaser.GameObjects.Container {
-    const container = new Phaser.GameObjects.Container(this.scene, 0, -60);
+    const container = new Phaser.GameObjects.Container(this.scene as Phaser.Scene, 0, -60);
     
     // Create panel background
-    const bg = this.scene.add.rectangle(0, 0, 100, 60, 0x333333, 0.8);
+    const bg = (this.scene as Phaser.Scene).add.rectangle(0, 0, 100, 60, 0x333333, 0.8);
     bg.setStrokeStyle(1, 0xffffff);
     
     // Get current version from version manager

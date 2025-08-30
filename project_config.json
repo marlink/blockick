@@ -1,0 +1,11 @@
+{
+  "working_directory": "/Users/ciepolml/Projects/mamba-kick/v02",
+  "default_branch": "main",
+  "build_command": "npm run build",
+  "push_to": "marlink",
+  "rules": {
+    "no_and_operator": true,
+    "verify_env": true,
+    "display_context_limit": true
+  }
+}

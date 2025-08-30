@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!-- Mamba Kick Game - Working Version v0.3 -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Mamba Kick Game v0.3</title>
+  <style>
+    .version-dropdown {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      font-family: Arial, sans-serif;
+    }
+    
+    .version-toggle {
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      border: 1px solid #666;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      min-width: 60px;
+      text-align: center;
+      transition: background-color 0.2s;
+    }
+    
+    .version-toggle:hover {
+      background: rgba(0, 0, 0, 0.9);
+    }
+    
+    .version-options {
+      position: absolute;
+      bottom: 100%;
+      right: 0;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #666;
+      border-radius: 5px;
+      margin-bottom: 5px;
+      min-width: 80px;
+      display: none;
+    }
+    
+    .version-option {
+      display: block;
+      width: 100%;
+      background: none;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: left;
+      transition: background-color 0.2s;
+    }
+    
+    .version-option:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .version-option:disabled {
+      color: #999;
+      cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .version-option:disabled:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="version-dropdown">
+    <button class="version-toggle" onclick="toggleVersionDropdown()">v0.3 ▼</button>
+    <div class="version-options" id="versionOptions">
+      <button class="version-option" onclick="switchVersion('http://localhost:8082/')">v0.2</button>
+      <button class="version-option" disabled>v0.3</button>
+    </div>
+  </div>
+  
+  <script>
+    function toggleVersionDropdown() {
+      const options = document.getElementById('versionOptions');
+      const isVisible = options.style.display === 'block';
+      options.style.display = isVisible ? 'none' : 'block';
+    }
+    
+    function switchVersion(url) {
+      window.location.href = url;
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const dropdown = document.querySelector('.version-dropdown');
+      const options = document.getElementById('versionOptions');
+      
+      if (!dropdown.contains(event.target)) {
+        options.style.display = 'none';
+      }
+    });
+  </script>
+  
+  <script src="main.bundle.js"></script>
+</body>
+</html>

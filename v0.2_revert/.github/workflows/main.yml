@@ -1,0 +1,31 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Packages
+        run: npm run build
+
+# Added handover process initiation to user rules
+handover_process_initiation: true
+
+# Added contact dictation preferences notification to user rules
+contact_dictation_preferences: true
+
+# Verified compliance of updated rules with user instructions and Trae guidelines
+rules_compliance_verified: true

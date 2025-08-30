@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!-- Mamba Kick Game - Working Version v0.2 -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Mamba Kick Game v0.2</title>
+  <style>
+    .version-menu {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    }
+    .version-menu h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+    }
+    .version-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin: 2px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .version-btn:hover {
+      background: #45a049;
+    }
+    .version-btn:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="version-menu">
+    <h3>Dev ▸ Version</h3>
+    <button class="version-btn" disabled>v0.2</button>
+    <button class="version-btn" onclick="window.location.href='http://localhost:8083/'">v0.3</button>
+  </div>
+  <script src="main.bundle.js"></script>
+</body>
+</html>
